@@ -431,7 +431,7 @@ const U={tab:'dash',date:null,month:null,period:'all',curve:'bal',edit:false,
 let saveT;
 const EMBED=new URLSearchParams(location.search).has('embed');let EMBED_THEME=null,EMBED_FS=0,EMBED_FONT='';
 const fvPost=m=>{if(EMBED)try{parent.postMessage(m,location.origin)}catch(e){}};
-const save=()=>{clearTimeout(saveT);saveT=setTimeout(()=>{DB.set('state',S).then(()=>fvPost({type:'fillog:saved'}))},250)};
+const save=()=>{clearTimeout(saveT);saveT=setTimeout(()=>{DB.set('state',S).then(()=>{fvPost({type:'fillog:saved'});if(typeof autoSnap==='function')autoSnap()})},250)};
 document.addEventListener('visibilitychange',()=>{if(document.hidden){clearTimeout(saveT);DB.set('state',S)}});
 window.addEventListener('pagehide',()=>{clearTimeout(saveT);DB.set('state',S)});
 
@@ -1264,7 +1264,7 @@ async function installDiag(){
 function vDash(){
   const chips=[['all','전체'],['month','이번 달'],['30','최근 30일']].map(([k,l])=>`<button class="chip ${U.period===k?'on':''}" data-a="period" data-p="${k}">${l}</button>`).join('');
   const banner=(deferredPrompt&&!isStandalone())?`<div class="card"><div class="row sp"><span>홈 화면에 앱으로 설치할 수 있어요</span><button class="btn sm" data-a="install">설치</button></div></div>`:'';
-  const top=`<div class="ctop"><div class="chips">${chips}</div><button class="btn ghost sm" data-a="dashEdit">${U.edit?'완료':'카드 편집'}</button></div>`;
+  const top=backupBanner()+`<div class="ctop"><div class="chips">${chips}</div><button class="btn ghost sm" data-a="dashEdit">${U.edit?'완료':'카드 편집'}</button></div>`;
   const body=S.dash.filter(c=>DASH[c.id]&&(U.edit||c.on)).map(c=>{
     const D=DASH[c.id];
     const bar=U.edit?`<div class="cbar"><b>${D.name}</b><div class="pbtn"><button data-a="dUp" data-id="${c.id}" aria-label="위로">↑</button><button data-a="dDown" data-id="${c.id}" aria-label="아래로">↓</button><button data-a="dTog" data-id="${c.id}">${c.on?'끄기':'켜기'}</button></div></div>`:'';
@@ -1318,7 +1318,7 @@ function tradeCard(t){
   const chartCtl=canChart(t)?`<div class="row" style="gap:6px;flex-wrap:wrap;margin-top:8px"><select id="tf_${t.id}" style="width:auto;padding:.4em .6em">${[['0','봉 자동'],...TF.map(x=>[String(x[0]),x[1]])].map(([v,n])=>`<option value="${v}">${n}</option>`).join('')}</select><button class="btn ghost sm" data-a="chartGen" data-id="${t.id}">${(t.charts||[]).some(c=>c.auto)?'차트 다시 만들기':'차트 생성'}</button></div>`:'';
   const note=t.chartNote?`<div class="msg warn">${esc(t.chartNote)}</div>`:'';
   const ta=(k,l)=>`<label class="l">${l}</label><textarea class="s" data-f="tf" data-id="${t.id}" data-k="${k}">${esc(t[k]||'')}</textarea>`;
-  const fv=EMBED&&!t.settle?`<div class="fvbar"><button class="btn sm" data-a="fvFocus" data-id="${t.id}">${EN()?'Show on chart':'차트에서 보기'}</button><button class="btn ghost sm" data-a="fvSnap" data-id="${t.id}">${EN()?'Attach chart now':'지금 차트 캡처 넣기'}</button></div>`:'';
+  const fv=EMBED&&!t.settle?`<div class="fvbar"><button class="btn sm" data-a="fvFocus" data-id="${t.id}">${EN()?'Show on chart':'차트에서 보기'}</button><button class="btn ghost sm" data-a="fvSnap" data-id="${t.id}">${EN()?'Attach chart now':'지금 차트 캡처 넣기'}</button><button class="btn ghost sm" data-a="fvShare" data-id="${t.id}">${EN()?'Share card':'공유 카드'}</button></div>`:'';
   return `<div class="tr" id="tr_${t.id}">${head}${times}${fv}${charts}${old}${note}${body}${chartCtl}
     <details class="sec" open><summary>내 메모</summary>${ta('entryReason','진입 근거')}${ta('exitReason','청산 이유')}${ta('review','복기')}${ta('improve','개선점')}</details>
     <div class="aibox"><b>AI 총평</b><textarea class="s" data-f="tf" data-id="${t.id}" data-k="ai" placeholder="AI가 쓴 총평이 여기 들어가요">${esc(t.ai||'')}</textarea></div>
@@ -1436,7 +1436,10 @@ function vMore(){
   <div class="card"><h2>매매 원칙</h2>${prin}<div class="btns"><button class="btn sm" data-a="addPrin">원칙 추가</button></div></div>
   <div class="card"><h2>Claude로 분석 보내기</h2><div class="sub">매매 기록 요약과 분석 요청문을 만들어요. Claude 앱으로 공유하거나 복사해서 대화에 붙여넣으세요. 이미지와 계좌 번호는 빠져요.</div><label class="l" for="ex_r">기간</label><select id="ex_r"><option value="7">최근 7일</option><option value="30" selected>최근 30일</option><option value="all">전체</option></select><div class="btns" style="margin-top:10px"><button class="btn sm" data-a="exShare">Claude 앱으로 공유</button><button class="btn ghost sm" data-a="exCopy">복사</button></div></div>
   <div class="card"><h2>백업 · 복원</h2><div class="sub" style="margin-bottom:8px">모든 기록과 이미지를 파일 하나로 저장해요. 폰을 바꾸거나 앱을 지우기 전에 꼭 백업하세요.</div>
-    <div class="btns"><button class="btn" data-a="backup">백업 파일 저장</button><button class="btn ghost" data-a="restore">백업에서 복원</button></div></div>
+    <div class="btns"><button class="btn" data-a="backup">백업 파일 저장</button><button class="btn ghost" data-a="restore">백업에서 복원</button></div>
+    <div class="sub" style="margin-top:8px">${S.settings.lastBackup?'마지막 백업: '+new Date(S.settings.lastBackup).toLocaleString(LOC()):'아직 백업한 적이 없어요.'}</div></div>
+  <div class="card"><h2>자동 복사본</h2><div class="sub" style="margin-bottom:8px">하루에 한 번 이 기기 안에 자동으로 복사본을 만들어요(최근 7일). 실수로 지웠을 때 되돌리는 용도예요. 폰을 잃어버리면 같이 사라지니, 백업 파일도 꼭 저장해 두세요. 지운 매매의 사진은 돌아오지 않을 수 있어요.</div>
+    ${(U.snaps||[]).length?(U.snaps||[]).map(x=>`<div class="row sp" style="padding:6px 0;border-top:1px solid var(--line)"><span class="num">${x.k.slice(5)} <span class="sub">· 매매 ${x.n}건</span></span><button class="btn ghost sm" data-a="snapRestore" data-k="${x.k}">이 시점으로 되돌리기</button></div>`).join(''):'<div class="sub">아직 복사본이 없어요.</div>'}</div>
   <div class="card"><h2>데이터 삭제</h2><div class="sub" style="margin-bottom:8px">기기에 저장된 모든 기록이 지워져요. 되돌릴 수 없어요.</div><button class="btn danger" data-a="wipe">모든 데이터 지우기</button></div>
   <div class="sub" style="text-align:center;margin-top:8px">Fillog · 명령어 형식 v1 · 시간대 ${tzLabel()}</div>`}
 
@@ -1561,7 +1564,7 @@ async function doBackup(){
   for(const id of ids){if(!id)continue;const v=await DB.get('img:'+id);if(v)imgs[id]=v}
   const blob=new Blob([JSON.stringify({app:'fillog',version:3,state:S,images:imgs})],{type:'application/json'});
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`fillog-backup-${todayKey()}.json`;
-  document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),4000);toast('백업 파일을 저장했어요')}
+  document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),4000);S.settings.lastBackup=Date.now();save();toast('백업 파일을 저장했어요');if(U.tab==='dash')render()}
 $('#fileRestore').addEventListener('change',async e=>{
   const f=e.target.files[0];e.target.value='';if(!f)return;
   try{const o=JSON.parse(await f.text());if(!(o.app==='fillog'||o.app==='trading-os')||!o.state)throw 0;
@@ -1606,6 +1609,10 @@ document.addEventListener('click',async e=>{
     case 'rmDayImg':{const d=dayW(U.date);d.images=d.images.filter(i=>i!==D.id);await dropImg(D.id);save();render();break}
     case 'attachChart':imgTarget='chart:'+D.id;$('#fileImg').click();break;
     case 'fvFocus':fvPost({type:'fillog:focus',id:D.id});break;
+    case 'fvShare':fvPost({type:'fillog:share',id:D.id});break;
+    case 'snapRestore':{const v=await DB.get(D.k);if(!v||!v.state){toast(EN()?'Snapshot not found':'복사본을 찾지 못했어요');break}
+      if(!ask(EN()?'Restore this snapshot? Your current records will be replaced (back up first if needed).':'이 복사본으로 되돌릴까요? 지금 기록이 바뀌어요. 필요하면 먼저 백업해 주세요.'))break;
+      S=migrate(v.state);save();render();toast(EN()?'Restored':'되돌렸어요');break}
     case 'fvSnap':fvPost({type:'fillog:snap',id:D.id});toast(EN()?'Capturing the chart…':'차트를 캡처하는 중이에요…');break;
     case 'imgDel':{const t=S.trades.find(x=>x.id===D.id);if(t){t.imgs=(t.imgs||[]).filter(i=>i!==D.img);await dropImg(D.img);save();render()}break}
     case 'chartDel':{const t=S.trades.find(x=>x.id===D.id);if(t&&ask('이 차트 이미지를 삭제할까요?')){const c=t.charts[Number(D.ci)];t.charts.splice(Number(D.ci),1);await dropImg(c.shown);await dropImg(c.orig);save();render()}break}
@@ -1727,6 +1734,14 @@ function legacyRead(){return new Promise(res=>{
 
 /* ================= 시작 ================= */
 
+/* ================= 자동 복사본 (하루 한 번, 최근 7개) ================= */
+async function autoSnap(){try{const k='snap:'+todayKey();if(await DB.get(k))return;
+  await DB.set(k,{at:Date.now(),n:S.trades.length,state:JSON.parse(JSON.stringify(S))});
+  const ks=(await DB.keys()).filter(x=>String(x).startsWith('snap:')).sort();while(ks.length>7)await DB.del(ks.shift());await loadSnaps()}catch(e){}}
+async function loadSnaps(){try{const ks=(await DB.keys()).filter(x=>String(x).startsWith('snap:')).sort().reverse();const out=[];for(const k of ks){const v=await DB.get(k);if(v)out.push({k,at:v.at,n:v.n})}U.snaps=out}catch(e){U.snaps=[]}}
+function backupBanner(){const lb=S.settings.lastBackup||0;if(!S.trades.length)return '';const days=Math.floor((Date.now()-lb)/864e5);if(lb&&days<7)return '';
+  return `<div class="card"><div class="row sp" style="gap:10px;flex-wrap:wrap"><span>${lb?(EN()?`Last backup ${days} days ago.`:`마지막 백업이 ${days}일 전이에요.`):(EN()?'You haven’t backed up yet.':'아직 백업한 적이 없어요.')} <span class="sub">${EN()?'Records live only on this device.':'기록은 이 기기에만 있어요.'}</span></span><button class="btn sm" data-a="backup">${EN()?'Back up now':'지금 백업'}</button></div></div>`}
+
 /* ================= Fillview 안에서 열렸을 때 ================= */
 async function checkPending(){const pi=await DB.get('pendingImport');
   if(pi){await DB.del('pendingImport');U.tab='imp';U.imp.txt=pi;U.imp.pend=null;try{doImportCheck()}catch(e){}render();window.scrollTo(0,0)}}
@@ -1738,6 +1753,7 @@ window.addEventListener('message',async e=>{if(!EMBED||e.origin!==location.origi
     if(d.tzMin!=null&&isFinite(d.tzMin)&&S.settings.tzMin!==+d.tzMin){S.settings.tzMin=+d.tzMin;ch=true}
     if(ch)save();applyTheme();if(!isTyping())render()}
   else if(d.type==='fillview:import'){await checkPending()}
+  else if(d.type==='fillview:checks'&&Array.isArray(d.ids)){const dd=dayW(todayKey());dd.checks=dd.checks||{};d.ids.forEach(id=>{if(S.principles.some(p=>p.id===id))dd.checks[id]=true});save();if(!isTyping())render()}
   else if(d.type==='fillview:tab'){U.tab=d.tab||'dash';render();scrollTo(0,0)}
   else if(d.type==='fillview:openTrade'){const t=S.trades.find(x=>x.id===d.id);if(!t)return;U.tab='journal';U.date=tDay(t);U.month=U.date.slice(0,7);render();
     setTimeout(()=>{const el=document.getElementById('tr_'+t.id);if(el)el.scrollIntoView({behavior:'smooth',block:'start'})},60)}
@@ -1763,6 +1779,7 @@ window.addEventListener('message',async e=>{if(!EMBED||e.origin!==location.origi
   render();
   /* 터미널에서 '일지로 보내기'한 체결이 있으면 가져오기 미리보기로 바로 열어요 */
   if(EMBED)document.body.classList.add('embed');
+  autoSnap();loadSnaps();
   await checkPending();
   fvPost({type:'fillog:ready'});
   if('serviceWorker' in navigator&&/^https?:/.test(location.protocol))navigator.serviceWorker.register('sw.js').catch(()=>{});
